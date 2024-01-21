@@ -1,0 +1,127 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Hello. I am doing this because I am bored and I can't use R at work. 
+
+```{r loading data and packages}
+
+data <- read.csv(file = "data_canpopu.csv")
+
+#install.packages("gganimate")
+#install.packages("Rtools")
+#install.packages("transformr")
+library(gganimate)
+library(transformr)
+library(dplyr)
+library(scales)
+#install.packages(c("gifski", "png"))
+#install.packages(c("utils", "tweenr"))
+library(gifski)
+library(png)
+library(utils)  
+library(tweenr)
+#load("PES19.RData")
+#load("CPS19.RData")
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+#install.packages("remotes")
+library(remotes)
+#remotes::install_github("mccormackandrew/mapcan")
+library(mapcan)
+#install.packages("viridis")
+library(viridisLite)
+library(viridis)
+install.packages("av_renderer")
+library(av_renderer)
+```
+
+```{r, warning=FALSE, include=F}
+
+data2 <- data %>%
+  pivot_longer(cols = 2:291, names_to = "Quarter", values_to = "Population") %>%
+  rename("Jurisdiction" = 'ï..Geography') %>%
+  #group_by(Jurisdiction, Quarter) %>%
+  mutate(Jurisdiction = Jurisdiction, Year = as.numeric(substring(Quarter, 4)), Population = Population) %>%
+  mutate(Population = as.numeric(gsub(",", "", Population))) %>%
+  group_by(Year, Jurisdiction) %>%
+  transmute(Population = mean(Population, na.rm = T))
+
+data2 <- data2[!duplicated(data2), ]
+
+data2 %>%
+  filter(Jurisdiction != "Canada") %>%
+  ggplot() +
+  geom_area(aes(x = Year, y = Population, group = Jurisdiction, fill = Jurisdiction)) +
+  scale_y_continuous(labels = unit_format(unit = "M", scale = 1e-7)) +
+  facet_wrap(~Jurisdiction)
+
+```
+
+```{r moving line plot}
+
+data2 %>% filter(Jurisdiction != "Canada") %>%
+  ggplot() +
+  geom_line(aes(x = Year, y = Population, group = Jurisdiction, color = Jurisdiction)) +
+  scale_y_log10(labels = scales::comma, breaks = c(10000,20000,30000, 50000,100000,250000, 500000,1000000,5000000,10000000,16000000)) +
+  scale_fill_viridis_d(name = "Total Population") +
+  transition_reveal(Year)
+
+```
+
+```{r canada map}
+
+
+## Creating data set for map and our variables
+df.canmap <- mapcan(boundaries = province, type = standard) 
+
+### Fixing provinces??
+
+list.provterri <- unique(df.canmap$pr_english)
+
+plot.map <- inner_join(df.canmap, data2, by = c("pr_english" = "Jurisdiction"))
+
+plot.mapwithoutterri <- subset(plot.map, pr_english != "Northwest Territories" & pr_english != "Yukon" & pr_english != "Nunavut")
+
+#save(plot.map, file = "plot.map.RData")
+#save(plot.mapwithoutterri, file = "plot.mapwithoutterri.RData")
+
+
+## variable
+
+num_years <- 2023 - 1951  + 1
+
+popu.map.timeline <- plot.map %>%
+  ggplot(aes(x = long, y = lat, group = group, fill = Population)) +
+  geom_polygon() +
+  coord_fixed() +
+  theme_mapcan() +
+  ggtitle("Total Population by Province") +
+  transition_time(Year)
+  
+  scale_fill_viridis_c(name = "Total Population") +
+  gganimate::transition_time(~Year) +
+  gganimate::ease_aes('linear')
+
+animate(popu.map.timeline, nframes = num_years, fps = 2)
+```
+
+```{r failed transition map}
+pAnim = gganimate::animate(popu.map.timeline, 
+                           renderer = av_renderer("~/test.mp4"), 
+                           fps = 1, 
+                           nframes = 72,
+                           height = 400, width = 400)
+
+  transition_layers(layer_length = 1, 
+                    transition_length = 1) +
+  enter_fade() + enter_grow() 
+  #facet_wrap(~Year)
+
+
+animate(popu.map.timeline, fps = 60,  renderer = gifski_renderer("~/popu.gif"))
+
+
+```
