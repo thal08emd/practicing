@@ -1,0 +1,65 @@
+
+import pandas as pd
+import numpy as np
+import openpyxl
+import textwrap 
+
+data = pd.read_excel("ESGdisclosuretimeline_data.xlsx", sheet_name="Enforcement")
+data["Level"] = [-60,240,-60,240,-60,-90,-240,100,-240,60,90,240,-60,-240]
+
+import matplotlib.pyplot as plt
+
+with plt.style.context("fivethirtyeight"): 
+    fig, ax = plt.subplots(figsize=(9,18))
+    
+    ax.plot([0,]* len(data), data.Start_Date, "-o", color="black", markerfacecolor="white");
+    
+    ax.set_yticks(pd.date_range("2024-1-1", "2028-1-1", freq="ys"), range(2024, 2029));
+    ax.set_xlim(-250,250);
+    
+    for idx in range(len(data)):
+        dt, acronym, standards, level = data["Start_Date"][idx], data["Institution_Acronym"][idx], data["Short"][idx], data["Level"][idx]
+        dt_str = dt.strftime("%Y-%m-%d")
+        ax.annotate(dt_str + "\n" + acronym + "\n" + standards, xy=(0.1 if level>0 else -0.1, dt),
+                    xytext=(level, dt),
+                    arrowprops=dict(arrowstyle="-",color="red", linewidth=1.5),
+                    va="center"
+                   );
+    
+    ax.spines[["left", "top", "right", "bottom"]].set_visible(False);
+    ax.spines[["bottom"]].set_position(("axes", 0.5));
+    ax.xaxis.set_visible(False);
+    ax.set_title("Timeline of Sustainability Disclosure Standards Enforcement", pad=10, loc="left", fontsize=25, fontweight="bold");
+    ax.grid(False)
+    
+    
+data["Level"] = [160,90,120,-240,-120,-80,-200,90,-185,180,100,200,-80,-150]
+import matplotlib.pyplot as plt
+
+with plt.style.context("fivethirtyeight"): 
+    fig, ax = plt.subplots(figsize=(18,9))
+    
+    ax.plot(data.Start_Date, [0,]* len(data), "-o", color="black", markerfacecolor="white");
+    
+    ax.set_xticks(pd.date_range("2024-1-1", "2028-1-1", freq="ys"), range(2024, 2029));
+    ax.set_ylim(-250,250);
+    
+    for idx in range(len(data)):
+        dt, acronym, standards, level = data["Start_Date"][idx], data["Institution_Acronym"][idx], data["Short"][idx], data["Level"][idx]
+        dt_str = dt.strftime("%Y-%m-%d")
+        ax.annotate(dt_str + "\n" + acronym + "\n" + standards, xy=(dt, 0.1 if level>0 else -0.1),
+                    xytext=(dt, level),
+                    arrowprops=dict(arrowstyle="-",color="red", linewidth=1.5),
+                    va="center"
+                   );
+    
+    ax.spines[["left", "top", "right", "bottom"]].set_visible(False);
+    ax.spines[["bottom"]].set_position(("axes", 0.5));
+    ax.yaxis.set_visible(False);
+    ax.set_facecolor('white');
+    ax.set_title("Timeline of Sustainability Disclosure Standards Enforcement", pad=10, loc="left", fontsize=25, fontweight="bold");
+    ax.grid(False)
+    
+    
+fig.savefig("output.pdf", facecolor='white', bbox_inches="tight")
+fig.savefig("output.png", facecolor='white', bbox_inches="tight")
